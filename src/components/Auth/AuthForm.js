@@ -1,10 +1,14 @@
-import { useRef, useState } from 'react';
-
+import { useContext, useRef, useState } from 'react';
+import AuthContext from '../../store/auth-context';
 import classes from './AuthForm.module.css';
+
+const API_KEY = 'AIzaSyD90dnGYC296PKhUV1H45EsNPA2Wo_BHdU';
 
 const AuthForm = () => {
 	const emailInputRef = useRef();
 	const passwordInputRef = useRef();
+
+	const authCtx = useContext(AuthContext);
 
 	const [isLogin, setIsLogin] = useState(true);
 	const [isLoading, setIsLoading] = useState(false);
@@ -21,38 +25,48 @@ const AuthForm = () => {
 
 		setIsLoading(true);
 
+		let url;
+
 		if (isLogin) {
-			// log the user in
+			url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`;
 		} else {
-			fetch(
-				'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyD90dnGYC296PKhUV1H45EsNPA2Wo_BHdU',
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						email: enteredEmail,
-						password: enteredPassword,
-						returnSecureToken: true,
-					}),
-				}
-			).then(res => {
+			url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`;
+		}
+
+		fetch(url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				email: enteredEmail,
+				password: enteredPassword,
+				returnSecureToken: true,
+			}),
+		})
+			.then(res => {
 				setIsLoading(false);
 				if (res.ok) {
-					// do sth...
+					return res.json();
 				} else {
 					return res.json().then(data => {
 						let errorMessage = 'Authentication failed!';
 						if (data && data.error && data.error.message) {
 							errorMessage = data.error.message;
 						}
-						console.log(errorMessage);
-						// alert(errorMessage);
+
+						throw new Error(errorMessage);
 					});
 				}
+			})
+			.then(data => {
+				// console.log(data);
+				authCtx.login(data.idToken);
+			})
+			.catch(err => {
+				console.log(err.message);
+				// alert(err.message);
 			});
-		}
 	};
 
 	return (
